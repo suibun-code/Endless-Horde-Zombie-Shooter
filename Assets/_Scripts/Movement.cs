@@ -16,15 +16,21 @@ public class Movement : MonoBehaviour
     PlayerController playerController;
     Rigidbody rb;
     Animator playerAnimator;
+    public GameObject followTransform;
 
     //Movement references
     Vector2 inputVector = Vector2.zero;
     Vector3 moveDirection = Vector3.zero;
+    Vector2 lookInput = Vector2.zero;
+
+    public float aimSensitivity;
 
     public readonly int movementXHash = Animator.StringToHash("MoveX");
     public readonly int movementYHash = Animator.StringToHash("MoveY");
     public readonly int isJumpingHash = Animator.StringToHash("isJumping");
     public readonly int isRunningHash = Animator.StringToHash("isRunning");
+    public readonly int isFiringHash = Animator.StringToHash("isFiring");
+    public readonly int isReloadingHash = Animator.StringToHash("isReloading");
 
     private void Awake()
     {
@@ -42,15 +48,36 @@ public class Movement : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
+        //camera x-axis rotation
+        followTransform.transform.rotation *= Quaternion.AngleAxis(lookInput.x * aimSensitivity, Vector3.up);
+        followTransform.transform.rotation *= Quaternion.AngleAxis(lookInput.y * aimSensitivity, Vector3.left);
+
+        var angles = followTransform.transform.localEulerAngles;
+        angles.z = 0;
+
+        var angle = followTransform.transform.localEulerAngles.x;
+
+        if (angle > 180 && angle < 300)
+        {
+            angles.x = 300;
+        }
+        else if (angle < 180 && angle > 70)
+        {
+            angles.x = 70;
+        }
+
+        followTransform.transform.localEulerAngles = angles;
+
+        //rotate the player to face where we are looking
+        transform.rotation = Quaternion.Euler(0, followTransform.transform.eulerAngles.y, 0);
+        followTransform.transform.localEulerAngles = new Vector3(angles.x, 0, 0);
+
         if (playerController.isJumping) return;
-
         if (!(inputVector.magnitude > 0)) moveDirection = Vector3.zero;
-
         moveDirection = transform.forward * inputVector.y + transform.right * inputVector.x;
         float currentSpeed = playerController.isRunning ? runSpeed : walkSpeed;
 
         Vector3 movementDirection = moveDirection * (currentSpeed * Time.deltaTime);
-
         transform.position += movementDirection;
     }
 
@@ -71,8 +98,28 @@ public class Movement : MonoBehaviour
     public void OnRun(InputValue inputValue)
     {
         playerController.isRunning = inputValue.isPressed;
-
         playerAnimator.SetBool(isRunningHash, playerController.isRunning);
+    }
+
+    public void OnAim(InputValue value)
+    {
+        playerController.isAiming = value.isPressed;
+    }
+    public void OnLook(InputValue value)
+    {
+        lookInput = value.Get<Vector2>();
+        //if we aim up, down, adjust animations to have a mask that will let us properly animate aim
+    }
+    public void OnReload(InputValue value)
+    {
+        playerController.isReloading = value.isPressed;
+        playerAnimator.SetBool(isReloadingHash, playerController.isReloading);
+    }
+    public void OnFire(InputValue value)
+    {
+        playerController.isFiring = value.isPressed;
+        playerAnimator.SetBool(isFiringHash, playerController.isFiring);
+        //set up firing animation
     }
 
     private void OnCollisionEnter(Collision collision)
