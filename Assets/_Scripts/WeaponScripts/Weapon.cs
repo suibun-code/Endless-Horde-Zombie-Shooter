@@ -28,6 +28,7 @@ public struct WeaponStats
     public float fireDistance;
     public bool repeating;
     public LayerMask weaponHitLayers;
+    public int totalBullets;
 }
 
 public class Weapon : MonoBehaviour
@@ -35,6 +36,10 @@ public class Weapon : MonoBehaviour
     public Transform gripLocation;
     public WeaponStats weaponStats;
     protected WeaponHolder weaponHolder;
+
+    [SerializeField]
+    protected ParticleSystem firingEffect;
+
     public bool isFiring;
     public bool isReloading;
 
@@ -43,18 +48,6 @@ public class Weapon : MonoBehaviour
     private void Awake()
     {
         mainCamera = Camera.main;
-    }
-
-    // Start is called before the first frame update
-    void Start()
-    {
-
-    }
-
-    // Update is called once per frame
-    void Update()
-    {
-
     }
 
     public void Initialize(WeaponHolder _weaponHolder)
@@ -68,6 +61,7 @@ public class Weapon : MonoBehaviour
 
         if (weaponStats.repeating)
         {
+            CancelInvoke(nameof(FireWeapon));
             //fire weapon
             InvokeRepeating(nameof(FireWeapon), weaponStats.fireStartDelay, weaponStats.fireRate);
         }
@@ -81,6 +75,11 @@ public class Weapon : MonoBehaviour
     {
         isFiring = false;
         CancelInvoke(nameof(FireWeapon));
+        
+        if(firingEffect && firingEffect.isPlaying)
+        {
+            firingEffect.Stop();
+        }
     }
 
     protected virtual void FireWeapon()
@@ -88,5 +87,37 @@ public class Weapon : MonoBehaviour
         print("Firing weapon!");
         weaponStats.bulletsInMag--;
         print(weaponStats.bulletsInMag);
+    }
+
+    public virtual void StartReloading()
+    {
+        isReloading = true;
+        ReloadWeapon();
+    }
+
+    public virtual void StopReloading()
+    {
+        isReloading = false;
+    }
+
+    protected virtual void ReloadWeapon()
+    {
+        if (firingEffect && firingEffect.isPlaying)
+        {
+            firingEffect.Stop();
+        }
+
+        int bulletsToReload = weaponStats.magSize - weaponStats.totalBullets;
+
+        if (bulletsToReload < 0)
+        {
+            weaponStats.bulletsInMag = weaponStats.magSize;
+            weaponStats.totalBullets -= weaponStats.magSize;
+        }
+        else
+        {
+            weaponStats.bulletsInMag = weaponStats.totalBullets;
+            weaponStats.totalBullets = 0;
+        }
     }
 }
